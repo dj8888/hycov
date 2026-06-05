@@ -205,11 +205,15 @@ static void hkCWindow_onUnmap(void* thisptr) {
   // after done original thing,The workspace automatically exit overview if no client exists 
   auto nodeNumInSameMonitor = 0;
   auto nodeNumInSameWorkspace = 0;
+	const auto pFocusMonitor = Desktop::focusState()->monitor();
 	for (auto &n : g_hycov_OvGridLayout->m_lOvGridNodesData) {
-		if(n.pWindow->monitorID() == Desktop::focusState()->monitor()->m_id && !g_pCompositor->isWorkspaceSpecial(n.workspaceID)) {
+		if (!n.pWindow || !n.pWindow->m_isMapped || n.pWindow->m_fadingOut || !pFocusMonitor) {
+			continue; // skip windows closed during overview / no focused monitor
+		}
+		if(n.pWindow->monitorID() == pFocusMonitor->m_id && !g_pCompositor->isWorkspaceSpecial(n.workspaceID)) {
 			nodeNumInSameMonitor++;
 		}
-		if(n.pWindow->m_workspace == Desktop::focusState()->monitor()->m_activeWorkspace) {
+		if(n.pWindow->m_workspace == pFocusMonitor->m_activeWorkspace) {
 			nodeNumInSameWorkspace++;
 		}
 	}

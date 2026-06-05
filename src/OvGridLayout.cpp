@@ -502,6 +502,13 @@ std::pair<int, int> OvGridLayout::moveWindowToSourceWorkspace()
             continue;
         }
 
+        // a window closed while in overview leaves a zombie node: the node keeps a
+        // strong PHLWINDOW alive, but its original workspace may already be freed.
+        // moving it back would call isVisible() on freed memory -> SIGSEGV. skip it.
+        if (!nd.pWindow->m_isMapped || nd.pWindow->m_fadingOut || !nd.pWindow->m_workspace) {
+            continue;
+        }
+
         const bool needsRestore = nd.ovbk_movedForOverview || nd.pWindow->m_workspace->m_id != nd.ovbk_windowWorkspaceId || nd.workspaceName != nd.ovbk_windowWorkspaceName;
         if (needsRestore)
         {
