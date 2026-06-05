@@ -11,6 +11,43 @@ A Hyprland overview mode plugin, a new tiling WM workflow.
 > **I won't be updating this repo anymore**.
 > After looking into the recent controversies and seeing clear evidence of bigotry from the creator of Hyprland, I have decided I can no longer support or contribute to this ecosystem.
 
+---
+
+> [!IMPORTANT]
+> ### dj8888 fork — Hyprland 0.55.2
+> Both upstreams are now dead: [DreamMaoMao/hycov](https://github.com/DreamMaoMao/hycov)
+> was archived (Jul 2024) and [ernestoCruz05/hycov](https://github.com/ernestoCruz05/hycov)
+> is no longer maintained. This fork carries the minimal patches needed to keep the
+> overview working on **Hyprland 0.55.2** (`v0.55.2`, commit `39d7e209`). Full credit
+> remains with **DreamMaoMao** and **ernestoCruz05**.
+>
+> **Patches on top of `ernestoCruz05/main`:**
+> 1. **Port to Hyprland 0.55.2** — moved-header includes, in-place `follow_focus`
+>    override (removed `parseKeyword`), `g_pXWaylandManager->sendCloseWindow`,
+>    qualified `Hyprutils::String::isNumber`.
+> 2. **Disable `findFunctionsByName` hooks** (`fullscreenActive` / `changeworkspace` /
+>    `moveActiveToWorkspace` / `spawn`) — they resolve to non-hookable addresses on
+>    0.55.2 and segfault on activation. Trade-off: overview no longer auto-exits on
+>    workspace-change / spawn. All activation sites are null-guarded.
+> 3. **Crash fix** — skip windows closed *during* overview in the source-workspace
+>    restore loop (they leave a zombie node whose workspace is freed → use-after-free).
+> 4. **Scratchpad independence** — special/scratchpad-workspace windows are left fully
+>    untouched (a maximized terminal kept in the scratchpad no longer un-fullscreens
+>    when overview opens), unless `show_special = 1`.
+>
+> **Build (CMake):**
+> ```shell
+> git clone git@github-personal:dj8888/hycov.git
+> cd hycov
+> cmake -DCMAKE_BUILD_TYPE=Release -B build
+> cmake --build build -j$(nproc)   # -> build/libhycov.so
+> ```
+> Load it from `hyprland.conf` with `exec-once = hyprctl plugin load <abs-path>/build/libhycov.so`.
+> **Rebuild after every Hyprland update** — the `.so` is pinned to 0.55.2 internals and
+> will likely need re-patching against new API. Test a rebuild by `hyprctl plugin load`
+> + toggling *before* wiring it into startup, so a regression only drops you to
+> recoverable safe mode.
+
 ### Fork Status
 
 | Feature | Status |
