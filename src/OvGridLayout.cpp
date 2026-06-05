@@ -554,6 +554,11 @@ void OvGridLayout::onEnable()
         if (pWindow->isHidden() || !pWindow->m_isMapped || pWindow->m_fadingOut)
             continue;
 
+        // keep special/scratchpad windows entirely out of overview (unless show_special):
+        // no node, no un-fullscreen, no move -- the scratchpad stays independent.
+        if (pWindow->m_workspace && pWindow->m_workspace->m_isSpecialWorkspace && !g_hycov_show_special)
+            continue;
+
         if(pWindow->monitorID() != Desktop::focusState()->monitor()->m_id && g_hycov_only_active_monitor && !g_hycov_forece_display_all && !g_hycov_forece_display_all_in_one_monitor)
             continue;
 

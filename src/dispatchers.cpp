@@ -571,6 +571,10 @@ void dispatch_enteroverview(std::string arg)
 	for (auto &w : g_pCompositor->getWorkspaces())
 	{
 		PHLWORKSPACE pWorkspace = w.lock();
+		// leave special/scratchpad workspaces untouched: a fullscreen terminal kept
+		// in the scratchpad must not be un-fullscreened when entering overview.
+		if (pWorkspace && pWorkspace->m_isSpecialWorkspace)
+			continue;
 		if (pWorkspace && pWorkspace->m_hasFullscreenWindow)
 		{
 			pFullscreenWindow = pWorkspace->getFullscreenWindow();
