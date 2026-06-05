@@ -4,6 +4,8 @@
 #include <regex>
 #include <set>
 #include <hyprland/src/SharedDefs.hpp>
+#include <hyprland/src/managers/XWaylandManager.hpp>
+#include <hyprutils/string/String.hpp>
 #include "OvGridLayout.hpp"
 
 typedef void (*origOnSwipeBegin)(void*, IPointer::SSwipeBeginEvent e);
@@ -42,9 +44,9 @@ bool isKeyReleaseToggleExitOverviewHit(IKeyboard::SKeyEvent e, SP<IKeyboard> pKe
   if (g_hycov_alt_replace_key == "")
     return false;
 
-  if (isNumber(g_hycov_alt_replace_key) && std::stoi(g_hycov_alt_replace_key) > 9 && std::stoi(g_hycov_alt_replace_key) == (e.keycode + 8)) {
+  if (Hyprutils::String::isNumber(g_hycov_alt_replace_key) && std::stoi(g_hycov_alt_replace_key) > 9 && std::stoi(g_hycov_alt_replace_key) == (e.keycode + 8)) {
     return true;
-  } else if (g_hycov_alt_replace_key.find("code:") == 0 && isNumber(g_hycov_alt_replace_key.substr(5)) && std::stoi(g_hycov_alt_replace_key.substr(5)) == (e.keycode + 8)) {
+  } else if (g_hycov_alt_replace_key.find("code:") == 0 && Hyprutils::String::isNumber(g_hycov_alt_replace_key.substr(5)) && std::stoi(g_hycov_alt_replace_key.substr(5)) == (e.keycode + 8)) {
     return true;
   } else {
     std::string keyname = getKeynameFromKeycode(e,pKeyboard);
@@ -189,7 +191,7 @@ static void hkCInputManager_onMouseButton(void* thisptr, IPointer::SButtonEvent 
     if (e.button == BTN_LEFT) {
         dispatch_toggleoverview("internalToggle");
     } else if (e.button == BTN_RIGHT) {
-        g_pCompositor->closeWindow(focusedWindow);
+        g_pXWaylandManager->sendCloseWindow(focusedWindow); // 0.55: CCompositor::closeWindow removed
     }
     return;
   }

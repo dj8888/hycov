@@ -1,5 +1,7 @@
 #include "dispatchers.hpp"
+#include <climits>
 #include <hyprland/src/config/ConfigManager.hpp>
+#include <hyprland/src/helpers/varlist/VarList.hpp>
 #include <hyprland/src/layout/algorithm/TiledAlgorithm.hpp>
 
 static const std::string overviewWorksapceName = "OVERVIEW";
@@ -134,11 +136,9 @@ static void setScrollingFollowFocusOverride(bool disable) {
 		}
 
 		g_hycov_scrolling_follow_focus_backup = **pData;
-		const auto err = g_pConfigManager->parseKeyword("scrolling:follow_focus", "0");
-		if (!err.empty()) {
-			hycov_log(Log::ERR, "failed to disable scrolling follow_focus: {}", err);
-			return;
-		}
+		// Hyprland 0.55 removed plugin access to g_pConfigManager::parseKeyword;
+		// mutate the live config value in place instead (pointee is non-const).
+		**pData = 0;
 
 		g_hycov_scrolling_follow_focus_overridden = true;
 		hycov_log(LOG, "disabled scrolling follow_focus for overview");
@@ -149,12 +149,8 @@ static void setScrollingFollowFocusOverride(bool disable) {
 		return;
 	}
 
-	const auto restoreValue = std::to_string(g_hycov_scrolling_follow_focus_backup);
-	const auto err = g_pConfigManager->parseKeyword("scrolling:follow_focus", restoreValue);
-	if (!err.empty()) {
-		hycov_log(Log::ERR, "failed to restore scrolling follow_focus to {}: {}", restoreValue, err);
-		return;
-	}
+	// 0.55: restore the live config value directly (see note above).
+	**pData = g_hycov_scrolling_follow_focus_backup;
 
 	g_hycov_scrolling_follow_focus_overridden = false;
 	hycov_log(LOG, "restored hyprscrolling follow_focus to {}", g_hycov_scrolling_follow_focus_backup);
