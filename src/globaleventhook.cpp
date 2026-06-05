@@ -349,36 +349,34 @@ void registerGlobalEventHook()
   //create private function hook
 
   // hook function of changeworkspace
-  static const auto ChangeworkspaceMethods = HyprlandAPI::findFunctionsByName(PHANDLE, "changeworkspace");
-  if (!ChangeworkspaceMethods.empty()) {
-    g_hycov_pChangeworkspaceHook = HyprlandAPI::createFunctionHook(PHANDLE, ChangeworkspaceMethods[0].address, (void*)&hkChangeworkspace);
-  } else {
-    hycov_log(Log::ERR, "hycov: Failed to find changeworkspace function");
-  }
+  // 0.55.2: findFunctionsByName returns a non-hookable address for these private
+  // methods, so activating the hook segfaults the compositor on overview-enter.
+  // Disabled — costs only the "auto-exit overview on workspace change" nicety.
+  // static const auto ChangeworkspaceMethods = HyprlandAPI::findFunctionsByName(PHANDLE, "changeworkspace");
+  // if (!ChangeworkspaceMethods.empty()) {
+  //   g_hycov_pChangeworkspaceHook = HyprlandAPI::createFunctionHook(PHANDLE, ChangeworkspaceMethods[0].address, (void*)&hkChangeworkspace);
+  // }
 
   // hook function of moveActiveToWorkspace
-  static const auto MoveActiveToWorkspaceMethods = HyprlandAPI::findFunctionsByName(PHANDLE, "moveActiveToWorkspace");
-  if (!MoveActiveToWorkspaceMethods.empty()) {
-    g_hycov_pMoveActiveToWorkspaceHook = HyprlandAPI::createFunctionHook(PHANDLE, MoveActiveToWorkspaceMethods[0].address, (void*)&hkMoveActiveToWorkspace);
-  } else {
-    hycov_log(Log::ERR, "hycov: Failed to find moveActiveToWorkspace function");
-  }
+  // 0.55.2: disabled, see note above (segfaults on hook activation).
+  // static const auto MoveActiveToWorkspaceMethods = HyprlandAPI::findFunctionsByName(PHANDLE, "moveActiveToWorkspace");
+  // if (!MoveActiveToWorkspaceMethods.empty()) {
+  //   g_hycov_pMoveActiveToWorkspaceHook = HyprlandAPI::createFunctionHook(PHANDLE, MoveActiveToWorkspaceMethods[0].address, (void*)&hkMoveActiveToWorkspace);
+  // }
 
   // hook function of spawn (bindkey will call spawn to excute a command or a dispatch)
-  static const auto SpawnMethods = HyprlandAPI::findFunctionsByName(PHANDLE, "spawn");
-  if (!SpawnMethods.empty()) {
-    g_hycov_pSpawnHook = HyprlandAPI::createFunctionHook(PHANDLE, SpawnMethods[0].address, (void*)&hkSpawn);
-  } else {
-    hycov_log(Log::ERR, "hycov: Failed to find spawn function");
-  }
+  // 0.55.2: disabled, see note above (segfaults on hook activation).
+  // static const auto SpawnMethods = HyprlandAPI::findFunctionsByName(PHANDLE, "spawn");
+  // if (!SpawnMethods.empty()) {
+  //   g_hycov_pSpawnHook = HyprlandAPI::createFunctionHook(PHANDLE, SpawnMethods[0].address, (void*)&hkSpawn);
+  // }
 
   //hook function of fullscreenActive
-  static const auto FullscreenActiveMethods = HyprlandAPI::findFunctionsByName(PHANDLE, "fullscreenActive");
-  if (!FullscreenActiveMethods.empty()) {
-    g_hycov_pFullscreenActiveHook = HyprlandAPI::createFunctionHook(PHANDLE, FullscreenActiveMethods[0].address, (void*)&hkFullscreenActive);
-  } else {
-    hycov_log(Log::ERR, "hycov: Failed to find fullscreenActive function");
-  }
+  // 0.55.2: disabled, see note above (this is the exact hook that segfaulted on enter).
+  // static const auto FullscreenActiveMethods = HyprlandAPI::findFunctionsByName(PHANDLE, "fullscreenActive");
+  // if (!FullscreenActiveMethods.empty()) {
+  //   g_hycov_pFullscreenActiveHook = HyprlandAPI::createFunctionHook(PHANDLE, FullscreenActiveMethods[0].address, (void*)&hkFullscreenActive);
+  // }
 
   // Hotarea feature disabled - causes mouse input corruption on Hyprland v0.53+
 

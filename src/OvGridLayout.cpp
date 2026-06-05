@@ -508,9 +508,9 @@ std::pair<int, int> OvGridLayout::moveWindowToSourceWorkspace()
             pWorkspace = g_pCompositor->getWorkspaceByID(nd.ovbk_windowWorkspaceId);
             if (!pWorkspace){
                 hycov_log(LOG,"source workspace no exist");
-                g_hycov_pSpawnHook->hook(); // disable on-emptty-create workspace rule
+                if (g_hycov_pSpawnHook) g_hycov_pSpawnHook->hook(); // disable on-emptty-create workspace rule
                 pWorkspace = g_pCompositor->createNewWorkspace(nd.ovbk_windowWorkspaceId,nd.ovbk_windowMonitorId,nd.ovbk_windowWorkspaceName);
-                g_hycov_pSpawnHook->unhook();
+                if (g_hycov_pSpawnHook) g_hycov_pSpawnHook->unhook();
                 hycov_log(LOG,"create workspace: id:{} monitor:{} name:{}",nd.ovbk_windowWorkspaceId,nd.pWindow->monitorID(),nd.ovbk_windowWorkspaceName);
             }
 

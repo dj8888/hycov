@@ -623,18 +623,18 @@ void dispatch_enteroverview(std::string arg)
 
 	}
 
-	// enable hook fullscreenActive funciton
-  	g_hycov_pFullscreenActiveHook->hook();
+	// enable hook fullscreenActive funciton (null-guarded: disabled on 0.55.2)
+  	if (g_hycov_pFullscreenActiveHook) g_hycov_pFullscreenActiveHook->hook();
 
 	//disable changeworkspace
 	if(g_hycov_disable_workspace_change) {
-  		g_hycov_pChangeworkspaceHook->hook();
-		g_hycov_pMoveActiveToWorkspaceHook->hook();
+  		if (g_hycov_pChangeworkspaceHook) g_hycov_pChangeworkspaceHook->hook();
+		if (g_hycov_pMoveActiveToWorkspaceHook) g_hycov_pMoveActiveToWorkspaceHook->hook();
 	}
 
 	//disable spawn
 	if(g_hycov_disable_spawn) {
-		g_hycov_pSpawnHook->hook();
+		if (g_hycov_pSpawnHook) g_hycov_pSpawnHook->hook();
 	}
 
 	return;
@@ -666,13 +666,13 @@ void dispatch_leaveoverview(std::string arg)
 
 	//enable changeworkspace
 	if(g_hycov_disable_workspace_change) {
-  		g_hycov_pChangeworkspaceHook->unhook();
-		g_hycov_pMoveActiveToWorkspaceHook->unhook();
+  		if (g_hycov_pChangeworkspaceHook) g_hycov_pChangeworkspaceHook->unhook();
+		if (g_hycov_pMoveActiveToWorkspaceHook) g_hycov_pMoveActiveToWorkspaceHook->unhook();
 	}
 
 	//enable spawn
 	if(g_hycov_disable_spawn) {
-		g_hycov_pSpawnHook->unhook();
+		if (g_hycov_pSpawnHook) g_hycov_pSpawnHook->unhook();
 	}
 
 	// if no clients, just exit overview, don't restore client's state
@@ -788,8 +788,8 @@ void dispatch_leaveoverview(std::string arg)
 	//mark has exited overview mode
 	g_hycov_isOverViewExiting = false;
 
-	// disable hook fullscreenActive funciton
-  	g_hycov_pFullscreenActiveHook->unhook();
+	// disable hook fullscreenActive funciton (null-guarded: disabled on 0.55.2)
+  	if (g_hycov_pFullscreenActiveHook) g_hycov_pFullscreenActiveHook->unhook();
 
 	// Apply pending move from drag-to-monitor
 	if (g_hycov_pendingMoveWindow && g_hycov_pendingMoveMonitor) {
