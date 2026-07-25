@@ -24,11 +24,20 @@
 #include <hyprland/src/devices/Keyboard.hpp>
 #include <hyprland/src/devices/IPointer.hpp>
 #include <hyprland/src/desktop/state/FocusState.hpp>
+#include <hyprland/src/desktop/state/ViewState.hpp>
+#include <hyprland/src/desktop/state/WindowState.hpp>
+#include <hyprland/src/desktop/state/GlobalWindowController.hpp>
+#include <hyprland/src/pointer/PointerController.hpp>
+#include <hyprland/src/state/WorkspaceState.hpp>
+#include <hyprland/src/state/WorkspaceQuery.hpp>
+#include <hyprland/src/state/MonitorState.hpp>
+#include <hyprland/src/state/MonitorQuery.hpp>
+#include <hyprland/src/managers/fullscreen/FullscreenController.hpp>
 #include <hyprland/src/layout/LayoutManager.hpp>
 #include <hyprland/src/layout/space/Space.hpp>
 #include <hyprland/src/layout/algorithm/Algorithm.hpp>
 #include <hyprland/src/layout/supplementary/WorkspaceAlgoMatcher.hpp>
-#include <hyprland/src/helpers/Monitor.hpp>
+#include <hyprland/src/output/Monitor.hpp>
 #include <hyprland/src/protocols/XDGShell.hpp>
 #include <hyprutils/string/String.hpp>
 #undef private
@@ -37,6 +46,7 @@
 #include "OvGridLayout.hpp"
 
 using namespace Desktop::View;
+using namespace Fullscreen;
 
 
 inline HANDLE PHANDLE = nullptr;

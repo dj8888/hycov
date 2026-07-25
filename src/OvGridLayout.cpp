@@ -23,7 +23,7 @@ static void moveWindowToWorkspaceCompat(PHLWINDOW pWindow, PHLWORKSPACE pWorkspa
     }
 
     if (pWindow->m_workspace != pWorkspace) {
-        g_pCompositor->moveWindowToWorkspaceSafe(pWindow, pWorkspace);
+        Desktop::globalWindowController()->moveWindowToWorkspace(pWindow, pWorkspace);
     }
 
     if (auto pMonitor = pWorkspace->m_monitor.lock()) {
@@ -73,14 +73,14 @@ static void placeWindowForOverview(PHLWINDOW pWindow, const Vector2D& position, 
         return;
     }
 
-    pWindow->m_position = position;
-    pWindow->m_size = size;
+    *pWindow->positionAnimation() = position;
+    *pWindow->sizeAnimation() = size;
 
     // Overview is a compositor-side preview. Write the rendered box directly
     // and do not route through target geometry, otherwise min/max-size clients
     // such as Electron utility windows keep enforcing their requested size.
-    pWindow->m_realSize->setValueAndWarp(size);
-    pWindow->m_realPosition->setValueAndWarp(position);
+    pWindow->sizeAnimation()->setValueAndWarp(size);
+    pWindow->positionAnimation()->setValueAndWarp(position);
     g_pHyprRenderer->damageWindow(pWindow);
 
     pWindow->updateWindowDecos();
@@ -90,10 +90,10 @@ static void placeWindowForOverview(PHLWINDOW pWindow, const Vector2D& position, 
 PHLWINDOW OvGridLayout::getNextWindowCandidate(PHLWINDOW plastWindow) {
 
     PHLWINDOW targetWindow =  nullptr;
-    for (auto &w : g_pCompositor->m_windows)
+    for (auto &w : Desktop::windowState()->windows())
     {
 		PHLWINDOW pWindow = w;
-        if (pWindow->m_workspace != plastWindow->m_workspace || pWindow->isHidden() || !pWindow->m_isMapped || pWindow->m_fadingOut || pWindow->isFullscreen())
+        if (pWindow->m_workspace != plastWindow->m_workspace || pWindow->isHidden() || !pWindow->m_isMapped || Fullscreen::controller()->isFullscreen(pWindow))
             continue;
 		targetWindow = pWindow; // find the last window that is in same workspace with the remove window
     }
@@ -172,12 +172,12 @@ void OvGridLayout::onWindowCreatedTiling(PHLWINDOW pWindow, Math::eDirection dir
     //record the window stats which are used by restore
     pNode->ovbk_windowMonitorId = pWindow->monitorID();
     pNode->ovbk_windowWorkspaceId = pWindow->m_workspace->m_id;
-    pNode->ovbk_windowFullscreenMode  = pWindowOriWorkspace->m_fullscreenMode;
-    pNode->ovbk_position = pWindow->m_realPosition->goal();
-    pNode->ovbk_size = pWindow->m_realSize->goal();
+    pNode->ovbk_windowFullscreenMode  = Fullscreen::controller()->getFullscreenModes(pWindow).internal;
+    pNode->ovbk_position = pWindow->positionAnimation()->goal();
+    pNode->ovbk_size = pWindow->sizeAnimation()->goal();
     pNode->ovbk_windowIsFloating = pWindow->m_isFloating;
     pNode->ovbk_windowWasPinned = pWindow->m_pinned;
-    pNode->ovbk_windowIsFullscreen = pWindow->isFullscreen();
+    pNode->ovbk_windowIsFullscreen = Fullscreen::controller()->isFullscreen(pWindow);
     pNode->ovbk_windowWorkspaceName = pWindowOriWorkspace->m_name;
 
     pNode->ovbk_windowIsWithBorder = true;
@@ -191,7 +191,7 @@ void OvGridLayout::onWindowCreatedTiling(PHLWINDOW pWindow, Math::eDirection dir
 
 
     //change all client(exclude special workspace) to active worksapce 
-    if ((!g_pCompositor->isWorkspaceSpecial(pNode->workspaceID) || g_hycov_show_special) && (pWindowOriWorkspace->m_id != pActiveWorkspace->m_id || pWindowOriWorkspace->m_name != pActiveWorkspace->m_name) && (!(g_hycov_only_active_workspace || g_hycov_force_display_only_current_workspace) || g_hycov_forece_display_all || g_hycov_forece_display_all_in_one_monitor)) {
+    if ((!State::workspaceState()->isSpecial(pNode->workspaceID) || g_hycov_show_special) && (pWindowOriWorkspace->m_id != pActiveWorkspace->m_id || pWindowOriWorkspace->m_name != pActiveWorkspace->m_name) && (!(g_hycov_only_active_workspace || g_hycov_force_display_only_current_workspace) || g_hycov_forece_display_all || g_hycov_forece_display_all_in_one_monitor)) {
         moveWindowToWorkspaceCompat(pWindow, pActiveWorkspace);
         pNode->workspaceID = pActiveWorkspace->m_id;
         pNode->workspaceName = pActiveWorkspace->m_name;
@@ -199,8 +199,8 @@ void OvGridLayout::onWindowCreatedTiling(PHLWINDOW pWindow, Math::eDirection dir
     }
 
     // clean fullscreen status
-    if (pWindow->isFullscreen()) {   
-        g_pCompositor->setWindowFullscreenInternal(pWindow, FSMODE_NONE);
+    if (Fullscreen::controller()->isFullscreen(pWindow)) {   
+        Fullscreen::controller()->setFullscreenMode(pWindow, FSMODE_NONE);
     }
 
     // Pinned floating windows are rendered in a dedicated "always above" pass.
@@ -230,8 +230,8 @@ void OvGridLayout::onWindowRemoved(PHLWINDOW pWindow) {
     if (!pNode)
         return;
 
-    if (pWindow->isFullscreen())
-        g_pCompositor->setWindowFullscreenInternal(pWindow, FSMODE_NONE);
+    if (Fullscreen::controller()->isFullscreen(pWindow))
+        Fullscreen::controller()->setFullscreenMode(pWindow, FSMODE_NONE);
 
     onWindowRemovedTiling(pWindow);
 }
@@ -262,7 +262,7 @@ bool OvGridLayout::isWindowTiled(PHLWINDOW pWindow)
 
 void OvGridLayout::calculateWorkspace(const WORKSPACEID &ws)
 {
-    const auto pWorksapce = g_pCompositor->getWorkspaceByID(ws); 
+    const auto pWorksapce = State::CWorkspaceQuery(*State::workspaceState()).id(ws).run(); 
     auto dataSize = m_lOvGridNodesData.size();
     auto pTempNodes = new SOvGridNodeData*[dataSize + 1];
     SOvGridNodeData *pNode;
@@ -381,7 +381,7 @@ void OvGridLayout::calculateWorkspace(const WORKSPACEID &ws)
 
 void OvGridLayout::recalculateMonitor(const MONITORID &monid)
 {
-    const auto pMonitor = g_pCompositor->getMonitorFromID(monid);                       // 根据monitor id获取monitor对象
+    const auto pMonitor = State::CMonitorQuery(*State::monitorState()).id(monid).run();                       // 根据monitor id获取monitor对象
 
     if(!pMonitor || !pMonitor->m_activeWorkspace)
         return;
@@ -393,7 +393,7 @@ void OvGridLayout::recalculateMonitor(const MONITORID &monid)
         return;
     }
 
-    const auto pWorksapce = g_pCompositor->getWorkspaceByID(pMonitor->activeWorkspaceID()); // 获取当前workspace对象
+    const auto pWorksapce = State::CWorkspaceQuery(*State::workspaceState()).id(pMonitor->activeWorkspaceID()).run(); // 获取当前workspace对象
     if (!pWorksapce)
         return;
 
@@ -469,7 +469,7 @@ void OvGridLayout::changeToActivceSourceWorkspace()
     pWindow = Desktop::focusState()->window();
     pNode = getNodeFromWindow(pWindow);
     if(pNode) {
-        pWorksapce = g_pCompositor->getWorkspaceByID(pNode->ovbk_windowWorkspaceId); 
+        pWorksapce = State::CWorkspaceQuery(*State::workspaceState()).id(pNode->ovbk_windowWorkspaceId).run(); 
     } else if(pWindow) {
         pWorksapce = pWindow->m_workspace; 
     } else {
@@ -479,7 +479,7 @@ void OvGridLayout::changeToActivceSourceWorkspace()
         return;
     }
 
-    auto pMonitor = g_pCompositor->getMonitorFromID(pWorksapce->monitorID());
+    auto pMonitor = State::CMonitorQuery(*State::monitorState()).id(pWorksapce->monitorID()).run();
     if (!pMonitor) {
         return;
     }
@@ -505,23 +505,23 @@ std::pair<int, int> OvGridLayout::moveWindowToSourceWorkspace()
         // a window closed while in overview leaves a zombie node: the node keeps a
         // strong PHLWINDOW alive, but its original workspace may already be freed.
         // moving it back would call isVisible() on freed memory -> SIGSEGV. skip it.
-        if (!nd.pWindow->m_isMapped || nd.pWindow->m_fadingOut || !nd.pWindow->m_workspace) {
+        if (!nd.pWindow->m_isMapped || !nd.pWindow->m_workspace) {
             continue;
         }
 
         const bool needsRestore = nd.ovbk_movedForOverview || nd.pWindow->m_workspace->m_id != nd.ovbk_windowWorkspaceId || nd.workspaceName != nd.ovbk_windowWorkspaceName;
         if (needsRestore)
         {
-            pWorkspace = g_pCompositor->getWorkspaceByID(nd.ovbk_windowWorkspaceId);
+            pWorkspace = State::CWorkspaceQuery(*State::workspaceState()).id(nd.ovbk_windowWorkspaceId).run();
             if (!pWorkspace){
                 hycov_log(LOG,"source workspace no exist");
                 if (g_hycov_pSpawnHook) g_hycov_pSpawnHook->hook(); // disable on-emptty-create workspace rule
-                pWorkspace = g_pCompositor->createNewWorkspace(nd.ovbk_windowWorkspaceId,nd.ovbk_windowMonitorId,nd.ovbk_windowWorkspaceName);
+                pWorkspace = State::workspaceState()->create(nd.ovbk_windowWorkspaceId,nd.ovbk_windowMonitorId,nd.ovbk_windowWorkspaceName);
                 if (g_hycov_pSpawnHook) g_hycov_pSpawnHook->unhook();
                 hycov_log(LOG,"create workspace: id:{} monitor:{} name:{}",nd.ovbk_windowWorkspaceId,nd.pWindow->monitorID(),nd.ovbk_windowWorkspaceName);
             }
 
-            auto pMonitor = g_pCompositor->getMonitorFromID(nd.ovbk_windowMonitorId);
+            auto pMonitor = State::CMonitorQuery(*State::monitorState()).id(nd.ovbk_windowMonitorId).run();
             if (!pWorkspace || !pMonitor) {
                 failed++;
                 hycov_log(Log::ERR,"restore source workspace failed,window:{} workspace:{} monitor:{}",nd.pWindow,nd.ovbk_windowWorkspaceId,nd.ovbk_windowMonitorId);
@@ -531,8 +531,8 @@ std::pair<int, int> OvGridLayout::moveWindowToSourceWorkspace()
             moveWindowToWorkspaceCompat(nd.pWindow, pWorkspace);
             nd.workspaceID = nd.ovbk_windowWorkspaceId;
             nd.workspaceName = nd.ovbk_windowWorkspaceName;
-            nd.pWindow->m_position = nd.ovbk_position;
-            nd.pWindow->m_size = nd.ovbk_size;
+            *nd.pWindow->positionAnimation() = nd.ovbk_position;
+            *nd.pWindow->sizeAnimation() = nd.ovbk_size;
             g_pHyprRenderer->damageWindow(nd.pWindow);
             nd.ovbk_movedForOverview = false;
             restored++;
@@ -547,11 +547,11 @@ std::pair<int, int> OvGridLayout::moveWindowToSourceWorkspace()
 void OvGridLayout::onEnable()
 {
 
-    for (auto &w : g_pCompositor->m_windows)
+    for (auto &w : Desktop::windowState()->windows())
     {        
         PHLWINDOW pWindow = w;
 
-        if (pWindow->isHidden() || !pWindow->m_isMapped || pWindow->m_fadingOut)
+        if (pWindow->isHidden() || !pWindow->m_isMapped)
             continue;
 
         // keep special/scratchpad windows entirely out of overview (unless show_special):

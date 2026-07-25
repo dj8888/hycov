@@ -175,7 +175,7 @@ static void hkCInputManager_onMouseButton(void* thisptr, IPointer::SButtonEvent 
     
     if (!focusedWindow) {
         Vector2D mouseCoords = g_pInputManager->getMouseCoordsInternal();
-        focusedWindow = g_pCompositor->vectorToWindowUnified(mouseCoords, 0, 0);
+        focusedWindow = Desktop::viewState()->hitTest().windowAt(mouseCoords, 0, nullptr);
         if (focusedWindow) {
             focusWindowCompat(focusedWindow);
         }
@@ -207,10 +207,10 @@ static void hkCWindow_onUnmap(void* thisptr) {
   auto nodeNumInSameWorkspace = 0;
 	const auto pFocusMonitor = Desktop::focusState()->monitor();
 	for (auto &n : g_hycov_OvGridLayout->m_lOvGridNodesData) {
-		if (!n.pWindow || !n.pWindow->m_isMapped || n.pWindow->m_fadingOut || !pFocusMonitor) {
+		if (!n.pWindow || !n.pWindow->m_isMapped || !pFocusMonitor) {
 			continue; // skip windows closed during overview / no focused monitor
 		}
-		if(n.pWindow->monitorID() == pFocusMonitor->m_id && !g_pCompositor->isWorkspaceSpecial(n.workspaceID)) {
+		if(n.pWindow->monitorID() == pFocusMonitor->m_id && !State::workspaceState()->isSpecial(n.workspaceID)) {
 			nodeNumInSameMonitor++;
 		}
 		if(n.pWindow->m_workspace == pFocusMonitor->m_activeWorkspace) {
@@ -289,13 +289,13 @@ static void hkFullscreenActive(std::string args) {
   if (g_hycov_isOverView && want_auto_fullscren(pWindow) && !g_hycov_auto_fullscreen) {
     hycov_log(LOG,"FullscreenActive toggle leave overview with fullscreen");
     dispatch_toggleoverview("internalToggle");
-    g_pCompositor->setWindowFullscreenInternal(pWindow, pWindow->isFullscreen() ? FSMODE_NONE : (args == "1" ? FSMODE_MAXIMIZED : FSMODE_FULLSCREEN));
+    Fullscreen::controller()->setFullscreenMode(pWindow, Fullscreen::controller()->isFullscreen(pWindow) ? FSMODE_NONE : (args == "1" ? FSMODE_MAXIMIZED : FSMODE_FULLSCREEN));
   } else if (g_hycov_isOverView && (!want_auto_fullscren(pWindow) || g_hycov_auto_fullscreen)) {
     hycov_log(LOG,"FullscreenActive toggle leave overview without fullscreen");
     dispatch_toggleoverview("internalToggle");
   } else {
     hycov_log(LOG,"FullscreenActive set fullscreen");
-    g_pCompositor->setWindowFullscreenInternal(pWindow, pWindow->isFullscreen() ? FSMODE_NONE : (args == "1" ? FSMODE_MAXIMIZED : FSMODE_FULLSCREEN));
+    Fullscreen::controller()->setFullscreenMode(pWindow, Fullscreen::controller()->isFullscreen(pWindow) ? FSMODE_NONE : (args == "1" ? FSMODE_MAXIMIZED : FSMODE_FULLSCREEN));
   }
 }
 

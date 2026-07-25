@@ -13,7 +13,7 @@ struct SOvGridNodeData
   bool ovbk_windowWasPinned = false;
   bool ovbk_windowHadXDGSizeLimits = false;
   bool ovbk_windowIsFullscreen = false;
-  eFullscreenMode ovbk_windowFullscreenMode = FSMODE_NONE;
+  Fullscreen::eFullscreenMode ovbk_windowFullscreenMode = Fullscreen::FSMODE_NONE;
   Vector2D ovbk_position;
   Vector2D ovbk_size;
   Vector2D ovbk_xdgMinSizeCurrent = {1, 1};
@@ -60,7 +60,7 @@ public:
   void recalculateMonitor(const MONITORID&);
   void recalculateWindow(PHLWINDOW);
   void resizeActiveWindow(const Vector2D&, Layout::eRectCorner corner = Layout::CORNER_NONE, PHLWINDOW pWindow = nullptr);
-  void fullscreenRequestForWindow(PHLWINDOW, const eFullscreenMode, const eFullscreenMode);
+  void fullscreenRequestForWindow(PHLWINDOW, const Fullscreen::eFullscreenMode, const Fullscreen::eFullscreenMode);
   void switchWindows(PHLWINDOW, PHLWINDOW);
   void alterSplitRatio(PHLWINDOW, float, bool);
   std::string getLayoutName();
