@@ -34,7 +34,8 @@ shared_module(meson.project_name(), src,
     dependency('pixman-1'),
     dependency('libdrm'),
     dependency('pango'),
-    dependency('pangocairo')
+    dependency('pangocairo'),
+    dependency('lua')
   ],
   install: true,
 )

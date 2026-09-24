@@ -1,8 +1,12 @@
 #include "dispatchers.hpp"
 #include <climits>
 #include <hyprland/src/config/ConfigManager.hpp>
+#include <hyprland/src/config/ConfigValue.hpp>
 #include <hyprland/src/helpers/varlist/VarList.hpp>
 #include <hyprland/src/layout/algorithm/TiledAlgorithm.hpp>
+extern "C" {
+#include <lua.h>
+}
 
 static const std::string overviewWorksapceName = "OVERVIEW";
 static std::string workspaceNameBackup;
@@ -107,10 +111,8 @@ static void restoreWindowSizeLimitsCompat(PHLWINDOW pWindow, const SOvGridNodeDa
 static void refreshRuntimeLayoutState() {
 	g_hycov_configLayoutName = layoutNameForWorkspace(Desktop::focusState()->monitor()->m_activeWorkspace);
 	if (g_hycov_configLayoutName.empty()) {
-		static const auto *pConfigLayoutName = (Hyprlang::STRING const*)(HyprlandAPI::getConfigValue(PHANDLE, "general:layout")->getDataStaticPtr());
-		if (pConfigLayoutName) {
-			g_hycov_configLayoutName = *pConfigLayoutName;
-		}
+		static auto PLAYOUTNAME = CConfigValue<std::string>("general:layout");
+		g_hycov_configLayoutName = *PLAYOUTNAME;
 	}
 	g_hycov_compat_scrolling_active = (g_hycov_configLayoutName == "scrolling");
 }
@@ -120,13 +122,12 @@ static void setScrollingFollowFocusOverride(bool disable) {
 		return;
 	}
 
-	const auto pValue = HyprlandAPI::getConfigValue(PHANDLE, "scrolling:follow_focus");
-	if (!pValue) {
-		return;
-	}
-
-	const auto pData = (Hyprlang::INT* const*)(pValue->getDataStaticPtr());
-	if (!pData || !*pData) {
+	// scrolling:follow_focus is a bool; CConfigValue<bool>::ptr() gives a
+	// live, correctly-sized pointer into it (the plugin used to reinterpret
+	// this as a Hyprlang::INT*, an 8-byte read/write over 1 byte of storage).
+	static auto PFOLLOWFOCUS = CConfigValue<bool>("scrolling:follow_focus");
+	auto* const pData = PFOLLOWFOCUS.ptr();
+	if (!pData) {
 		return;
 	}
 
@@ -135,10 +136,10 @@ static void setScrollingFollowFocusOverride(bool disable) {
 			return;
 		}
 
-		g_hycov_scrolling_follow_focus_backup = **pData;
+		g_hycov_scrolling_follow_focus_backup = *pData;
 		// Hyprland 0.55 removed plugin access to g_pConfigManager::parseKeyword;
 		// mutate the live config value in place instead (pointee is non-const).
-		**pData = 0;
+		*pData = false;
 
 		g_hycov_scrolling_follow_focus_overridden = true;
 		hycov_log(LOG, "disabled scrolling follow_focus for overview");
@@ -150,7 +151,7 @@ static void setScrollingFollowFocusOverride(bool disable) {
 	}
 
 	// 0.55: restore the live config value directly (see note above).
-	**pData = g_hycov_scrolling_follow_focus_backup;
+	*pData = g_hycov_scrolling_follow_focus_backup;
 
 	g_hycov_scrolling_follow_focus_overridden = false;
 	hycov_log(LOG, "restored hyprscrolling follow_focus to {}", g_hycov_scrolling_follow_focus_backup);
@@ -838,10 +839,46 @@ SDispatchResult dispatch_focusdir_v2(std::string arg) {
 	return {};
 }
 
+static std::string luaStringArg(lua_State* L) {
+	if (lua_gettop(L) >= 1 && lua_isstring(L, 1)) {
+		return lua_tostring(L, 1);
+	}
+	return "";
+}
+
+static int luaEnterOverview(lua_State* L) {
+	dispatch_enteroverview(luaStringArg(L));
+	return 0;
+}
+
+static int luaLeaveOverview(lua_State* L) {
+	dispatch_leaveoverview(luaStringArg(L));
+	return 0;
+}
+
+static int luaToggleOverview(lua_State* L) {
+	dispatch_toggleoverview(luaStringArg(L));
+	return 0;
+}
+
+static int luaMoveFocus(lua_State* L) {
+	dispatch_focusdir(luaStringArg(L));
+	return 0;
+}
+
 void registerDispatchers()
 {
 	HyprlandAPI::addDispatcherV2(PHANDLE, "hycov:enteroverview", dispatch_enteroverview_v2);
 	HyprlandAPI::addDispatcherV2(PHANDLE, "hycov:leaveoverview", dispatch_leaveoverview_v2);
 	HyprlandAPI::addDispatcherV2(PHANDLE, "hycov:toggleoverview", dispatch_toggleoverview_v2);
 	HyprlandAPI::addDispatcherV2(PHANDLE, "hycov:movefocus", dispatch_focusdir_v2);
+
+	// addDispatcherV2's "hycov:*" names aren't reachable from Lua config: hl.dsp.*
+	// is built into the Lua VM before plugins load, so hl.dispatch/hyprctl dispatch
+	// can never resolve a plugin-registered custom dispatcher by string name.
+	// Expose the same actions as hl.plugin.hycov.* Lua functions instead.
+	HyprlandAPI::addLuaFunction(PHANDLE, "hycov", "enteroverview", luaEnterOverview);
+	HyprlandAPI::addLuaFunction(PHANDLE, "hycov", "leaveoverview", luaLeaveOverview);
+	HyprlandAPI::addLuaFunction(PHANDLE, "hycov", "toggleoverview", luaToggleOverview);
+	HyprlandAPI::addLuaFunction(PHANDLE, "hycov", "movefocus", luaMoveFocus);
 }
